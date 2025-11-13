@@ -22,6 +22,18 @@ Monorepo containing the backend API, React SPA, database schema, and Docker Swar
 ## Getting started
 
 1. Provision PostgreSQL using the migration `backend/db/migrations/001-schema.sql`.
-2. Configure `.env` for the backend (see `.env.example`) and start with `npm run dev`.
-3. Start the frontend with `npm run dev` and point it at the running API.
+2. Configure `.env` for the backend (see `.env.example`), run `npm install` and `npm run dev` (or `npm run build` + `npm start` inside the container).
+3. Start the frontend locally with `npm run dev` (or `npm run build` inside `frontend` + serve via Docker) and point it at the running API.
 4. Use the React form or the REST endpoints to register a company, obtain the token, and emit NF-e (PDF only, XML saved internally).
+
+## Docker build & deploy
+
+1. Build the API image:
+   ```bash
+   docker build -t minha-registry/nfe-api:latest backend
+   ```
+2. Build the frontend image (the Dockerfile copies `dist/` into an nginx container that listens on port 80):
+   ```bash
+   docker build -t minha-registry/nfe-frontend:latest frontend
+   ```
+3. Push the images and deploy `stack-nfe.yml` in your Docker Swarm; Traefik will know how to route `api.allentiomolu.com.br` and `app.allentiomolu.com.br` to the proper services exposing ports 3000 and 80 respectively.

@@ -26,14 +26,28 @@ Monorepo containing the backend API, React SPA, database schema, and Docker Swar
 3. Start the frontend locally with `npm run dev` (or `npm run build` inside `frontend` + serve via Docker) and point it at the running API.
 4. Use the React form or the REST endpoints to register a company, obtain the token, and emit NF-e (PDF only, XML saved internally).
 
-## Docker build & deploy
+## Deploy simples em Ubuntu
 
-1. Build the API image:
+1. Instale dependências:
    ```bash
-   docker build -t minha-registry/nfe-api:latest backend
+   sudo apt update
+   sudo apt install -y nodejs npm postgresql
+   sudo npm install -g pm2
    ```
-2. Build the frontend image (the Dockerfile copies `dist/` into an nginx container that listens on port 80):
+2. Configure o PostgreSQL (crie banco e execute `backend/db/migrations/001-schema.sql`). Para testes rápidos pode usar `psql -U postgres -d nfe_db -f backend/db/migrations/001-schema.sql`.
+3. No backend:
    ```bash
-   docker build -t minha-registry/nfe-frontend:latest frontend
+   cd backend
+   npm install
+   cp .env.example .env && edite conforme seus dados
+   npm run build
+   pm2 start dist/index.js --name nfe-api --watch
    ```
-3. Push the images and deploy `stack-nfe.yml` in your Docker Swarm; Traefik will know how to route `api.allentiomolu.com.br` and `app.allentiomolu.com.br` to the proper services exposing ports 3000 and 80 respectively.
+4. No frontend:
+   ```bash
+   cd ../frontend
+   npm install
+   npm run build
+   npx serve -s dist -l 80
+   ```
+5. Ajuste o nginx do servidor (opcional) para fazer proxy das portas `3000` e `80` para `api.allentiomolu.com.br` e `app.allentiomolu.com.br`.

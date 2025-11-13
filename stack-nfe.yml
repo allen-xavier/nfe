@@ -1,0 +1,43 @@
+version: "3.9"
+
+networks:
+  minharede:
+    external: true
+
+services:
+  api:
+    image: minha-registry/nfe-api:latest
+    networks:
+      - minharede
+    environment:
+      DB_HOST: postgres
+      DB_USER: nfe
+      DB_PASS: senha
+      DB_NAME: nfe_db
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.nfe-api.rule=Host(`api.seusite.com`)"
+        - "traefik.http.services.nfe-api.loadbalancer.server.port=3000"
+  frontend:
+    image: minha-registry/nfe-frontend:latest
+    networks:
+      - minharede
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.nfe-frontend.rule=Host(`app.seusite.com`)"
+        - "traefik.http.services.nfe-frontend.loadbalancer.server.port=80"
+  postgres:
+    image: postgres:16
+    networks:
+      - minharede
+    environment:
+      POSTGRES_USER: nfe
+      POSTGRES_PASSWORD: senha
+      POSTGRES_DB: nfe_db
+    volumes:
+      - nfe_db:/var/lib/postgresql/data
+
+volumes:
+  nfe_db:

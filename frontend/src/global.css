@@ -1,0 +1,11 @@
+body {
+  font-family: "Inter", system-ui, sans-serif;
+  margin: 0;
+  background: #f4f6fb;
+}
+
+.app-wrapper {
+  max-width: 1024px;
+  margin: 0 auto;
+  padding: 2rem;
+}

@@ -17,7 +17,7 @@ services:
     deploy:
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.nfe-api.rule=Host(`api.seusite.com`)"
+        - "traefik.http.routers.nfe-api.rule=Host(`api.allentiomolu.com.br`)"
         - "traefik.http.services.nfe-api.loadbalancer.server.port=3000"
   frontend:
     image: minha-registry/nfe-frontend:latest
@@ -26,7 +26,7 @@ services:
     deploy:
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.nfe-frontend.rule=Host(`app.seusite.com`)"
+        - "traefik.http.routers.nfe-frontend.rule=Host(`app.allentiomolu.com.br`)"
         - "traefik.http.services.nfe-frontend.loadbalancer.server.port=80"
   postgres:
     image: postgres:16

@@ -44,10 +44,14 @@ export const emitirNotaController = async (req: Request, res: Response) => {
       payload
     );
 
-    return res
-      .status(200)
-      .contentType("application/pdf")
-      .sendFile(result.pdf_path, { headers: { "X-Chave-Acesso": result.chave_acesso } });
+    const pdfBase64 = result.pdf_buffer.toString("base64");
+    return res.status(200).json({
+      status: result.status,
+      chave_acesso: result.chave_acesso,
+      total: result.total,
+      pdf: pdfBase64,
+      xml: result.xml,
+    });
   } catch (error) {
     console.error("Erro ao emitir nota", error);
     return res.status(500).json({

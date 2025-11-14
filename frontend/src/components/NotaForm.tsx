@@ -25,6 +25,7 @@ const NotaForm: React.FC = () => {
     { descricao: "", ncm: "", quantidade: 1, valor_unitario: 0 },
   ]);
   const [pdfUrl, setPdfUrl] = useState<string>();
+  const [xmlUrl, setXmlUrl] = useState<string>();
   const [message, setMessage] = useState<string>();
 
   const updateItem = (index: number, field: keyof Item, value: string | number) => {
@@ -45,6 +46,8 @@ const NotaForm: React.FC = () => {
       return;
     }
 
+    setPdfUrl(undefined);
+    setXmlUrl(undefined);
     try {
       const response = await api.post(
         "/nfe/emitir",
@@ -57,12 +60,20 @@ const NotaForm: React.FC = () => {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-          responseType: "blob",
         }
       );
-      const url = URL.createObjectURL(new Blob([response.data], { type: "application/pdf" }));
-      setPdfUrl(url);
-      setMessage("NF-e autorizada. PDF pronto para download.");
+      const pdfBase64 = response.data.pdf;
+      const xmlContent = response.data.xml;
+      const pdfBuffer = Uint8Array.from(atob(pdfBase64), (char) => char.charCodeAt(0));
+      const pdfBlob = new Blob([pdfBuffer], { type: "application/pdf" });
+      const newPdfUrl = URL.createObjectURL(pdfBlob);
+      setPdfUrl(newPdfUrl);
+      if (xmlContent) {
+        const xmlBlob = new Blob([xmlContent], { type: "application/xml" });
+        const newXmlUrl = URL.createObjectURL(xmlBlob);
+        setXmlUrl(newXmlUrl);
+      }
+      setMessage("NF-e autorizada. PDF e XML disponíveis para download.");
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
         const message = error.response?.data?.error ?? error.response?.data?.detail ?? error.message;
@@ -134,6 +145,13 @@ const NotaForm: React.FC = () => {
         <div>
           <a href={pdfUrl} target="_blank" rel="noreferrer">
             Baixar DANFE
+          </a>
+        </div>
+      )}
+      {xmlUrl && (
+        <div>
+          <a href={xmlUrl} target="_blank" rel="noreferrer">
+            Baixar XML da NF-e
           </a>
         </div>
       )}

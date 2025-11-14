@@ -80,6 +80,16 @@ export interface EmitirNotaDTO {
   };
 }
 
+export interface EmitirNotaResult {
+  status: string;
+  chave_acesso: string;
+  total: number;
+  pdf_buffer: Buffer;
+  xml: string;
+  pdf_path: string;
+  xml_path: string;
+}
+
 export const emitirNota = async (
   empresa: {
     id: number;
@@ -100,7 +110,7 @@ export const emitirNota = async (
     senha: string;
   },
   dto: EmitirNotaDTO
-) => {
+): Promise<EmitirNotaResult> => {
   const nextNumero = await incrementNumeroNota(empresa.id);
   const itensComCfop = dto.itens.map((item) => {
     const cfop = resolveCfop(empresa.uf, dto.destinatario.uf);
@@ -230,7 +240,8 @@ export const emitirNota = async (
 
   const xml = xmlBuilder.end({ prettyPrint: true });
 
-  await fs.writeFile(path.join(storageXml, `${chave_acesso}.xml`), xml, { encoding: "utf8" });
+  const xmlPath = path.join(storageXml, `${chave_acesso}.xml`);
+  await fs.writeFile(xmlPath, xml, { encoding: "utf8" });
 
   const certificadoBuffer = Buffer.isBuffer(certificado.pfx) ? certificado.pfx : Buffer.from(certificado.pfx);
   const footer = await autorizarNotaSefaz(xml, chave_acesso, certificadoBuffer, certificado.senha, empresa.uf);
@@ -289,13 +300,17 @@ export const emitirNota = async (
     itens: itensComCfop,
   });
 
-  await fs.writeFile(path.join(storagePdf, `${nota.id}.pdf`), pdf);
+  const pdfPath = path.join(storagePdf, `${nota.id}.pdf`);
+  await fs.writeFile(pdfPath, pdf);
 
   return {
     status: nota.status,
-    pdf_path: path.join(storagePdf, `${nota.id}.pdf`),
     chave_acesso,
     total,
+    pdf_buffer: pdf,
+    xml,
+    xml_path: xmlPath,
+    pdf_path: pdfPath,
   };
 };
 

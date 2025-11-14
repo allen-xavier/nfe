@@ -1,3 +1,4 @@
+import axios from "axios";
 import api from "../lib/api";
 import React, { useState } from "react";
 
@@ -62,8 +63,15 @@ const EmpresaForm: React.FC = () => {
       const response = await api.post("/empresa", payload);
       setToken(response.data.token);
       setStatus("Empresa criada com sucesso.");
-    } catch (error) {
-      setStatus("Erro ao cadastrar empresa.");
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        setStatus(error.message);
+      } else if (axios.isAxiosError(error)) {
+        const message = error.response?.data?.error ?? error.response?.data?.detail ?? error.message;
+        setStatus(message);
+      } else {
+        setStatus("Erro ao cadastrar empresa.");
+      }
     }
   };
 

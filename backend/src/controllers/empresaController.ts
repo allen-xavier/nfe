@@ -10,6 +10,10 @@ export const criarEmpresa = async (req: Request, res: Response) => {
       message: "Empresa criada e token gerado automaticamente.",
     });
   } catch (error) {
-    return res.status(500).json({ error: "Erro ao criar empresa." });
+    console.error("Erro ao criar empresa", error);
+    return res.status(500).json({
+      error: "Erro ao criar empresa.",
+      detail: error instanceof Error ? error.message : undefined,
+    });
   }
 };

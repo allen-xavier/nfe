@@ -167,11 +167,11 @@ const SOAP_ACTION_LOTE = "http://www.portalfiscal.inf.br/nfe/wsdl/NfeAutorizacao
 const SOAP_ACTION_RECIBO = "http://www.portalfiscal.inf.br/nfe/wsdl/NfeAutorizacao/NFeRetAutorizacaoLote";
 
 const buildAutorizacaoBody = (payload: string) => `
-    <nfe:NFeAutorizacaoLote xmlns:nfe="http://www.portalfiscal.inf.br/nfe/wsdl/NfeAutorizacao">
+    <nfe:nfeAutorizacaoLote xmlns:nfe="http://www.portalfiscal.inf.br/nfe/wsdl/NfeAutorizacao">
       <nfe:nfeDadosMsg>
         ${payload}
       </nfe:nfeDadosMsg>
-    </nfe:NFeAutorizacaoLote>`;
+    </nfe:nfeAutorizacaoLote>`;
 
 const buildSoapEnvelope = (cabecMsg: string, bodyContent: string) => `
     <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:nfe="http://www.portalfiscal.inf.br/nfe/wsdl/NfeAutorizacao">

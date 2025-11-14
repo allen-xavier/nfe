@@ -213,7 +213,8 @@ export const autorizarNotaSefaz = async (
 ): Promise<AutorizacaoResponse> => {
   const cert = parsePfx(certificado, senha);
   const signedXml = signXml(xml, cert);
-  const envelope = buildSoapEnvelope(signedXml);
+  const payload = signedXml.replace(/^<\?xml.*?\?>\s*/i, "");
+  const envelope = buildSoapEnvelope(payload);
 
   const endpoint = getEndpointFor(uf, "autorizacao");
   const response = await axios.post(endpoint, envelope, {

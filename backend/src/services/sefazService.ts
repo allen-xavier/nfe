@@ -166,6 +166,13 @@ const normalizePem = (pem: string) => pem.replace(/-----BEGIN CERTIFICATE-----|-
 const SOAP_ACTION_LOTE = "http://www.portalfiscal.inf.br/nfe/wsdl/NfeAutorizacao/NfeAutorizacaoLote";
 const SOAP_ACTION_RECIBO = "http://www.portalfiscal.inf.br/nfe/wsdl/NfeAutorizacao/NFeRetAutorizacaoLote";
 
+const buildAutorizacaoBody = (payload: string) => `
+    <nfe:NFeAutorizacaoLote xmlns:nfe="http://www.portalfiscal.inf.br/nfe/wsdl/NfeAutorizacao">
+      <nfe:nfeDadosMsg>
+        ${payload}
+      </nfe:nfeDadosMsg>
+    </nfe:NFeAutorizacaoLote>`;
+
 const buildSoapEnvelope = (cabecMsg: string, bodyContent: string) => `
     <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:nfe="http://www.portalfiscal.inf.br/nfe/wsdl/NfeAutorizacao">
       <soapenv:Header>
@@ -239,7 +246,7 @@ export const autorizarNotaSefaz = async (
   const signedXml = signXml(xml, cert);
   const payload = signedXml.replace(/^<\?xml.*?\?>\s*/i, "");
   const cabecMsg = buildCabecMsg(uf);
-  const body = `<nfe:nfeDadosMsg>${payload}</nfe:nfeDadosMsg>`;
+  const body = buildAutorizacaoBody(payload);
   const endpoint = getEndpointFor(uf, "autorizacao");
   const envelope = buildSoapEnvelope(cabecMsg, body);
   const response = await axios.post(endpoint, envelope, {

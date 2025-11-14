@@ -57,3 +57,7 @@ Monorepo containing the backend API, React SPA, database schema, and Docker Swar
    npx serve -s dist -l 80
    ```
 5. Ajuste o nginx do servidor (opcional) para fazer proxy das portas `3000` e `80` para `api.allentiomolu.com.br` e `app.allentiomolu.com.br`.
+
+## Deploy automatizado
+
+Use `scripts/deploy.sh` (lembre-se de dar `chmod +x scripts/deploy.sh`) para construir backend/frontend, enviar as imagens e redeployar a stack com Traefik. Ele já executa `npm install && npm run build` em cada serviço e faz `docker stack deploy -c stack-nfe.yml nfe`.

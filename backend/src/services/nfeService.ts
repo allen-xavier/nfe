@@ -64,8 +64,9 @@ export const emitirNota = async (
   });
 
   const xmlBuilder = create({ version: "1.0", encoding: "UTF-8" })
-    .ele("NFe", { xmlns: "http://www.portalfiscal.inf.br/nfe" });
-  const infNFe = xmlBuilder.ele("infNFe", {
+    .ele("enviNFe", { versao: "4.00", xmlns: "http://www.portalfiscal.inf.br/nfe" });
+  const NFe = xmlBuilder.ele("NFe");
+  const infNFe = NFe.ele("infNFe", {
     Id: `NFe${chave_acesso}`,
     versao: "4.00",
   });
@@ -99,6 +100,10 @@ export const emitirNota = async (
       .up()
       .up();
   });
+
+  const totalTag = infNFe.ele("total");
+  const icmsTot = totalTag.ele("ICMSTot");
+  icmsTot.ele("vNF").txt(total.toFixed(2));
 
   const xml = xmlBuilder.end({ prettyPrint: true });
 

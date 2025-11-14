@@ -4,6 +4,7 @@ import { XMLParser } from "fast-xml-parser";
 import { DOMParser } from "xmldom";
 import { SignedXml, FileKeyInfo } from "xml-crypto";
 import { parsePfx, Certificado } from "../utils/certificado";
+import { UF_CODES } from "../utils/chaveAcesso";
 
 type SefazServiceEndpoints = {
   autorizacao: string;
@@ -13,8 +14,8 @@ type SefazServiceEndpoints = {
 const SEFAZ_ENDPOINTS: Record<string, { homologacao: SefazServiceEndpoints; producao: SefazServiceEndpoints }> = {
   MG: {
     homologacao: {
-      autorizacao: "https://nfe.fazenda.mg.gov.br/nfe2/services/NFeAutorizacao4",
-      recibo: "https://nfe.fazenda.mg.gov.br/nfe2/services/NFeRetAutorizacao4",
+      autorizacao: "https://hnfe.fazenda.mg.gov.br/nfe2/services/NFeAutorizacao4",
+      recibo: "https://hnfe.fazenda.mg.gov.br/nfe2/services/NFeRetAutorizacao4",
     },
     producao: {
       autorizacao: "https://nfe.fazenda.mg.gov.br/nfe2/services/NFeAutorizacao4",
@@ -148,7 +149,32 @@ const getEndpointFor = (uf: string, key: "autorizacao" | "recibo") => {
   return entry[ambiente][key];
 };
 
+const padNumber = (value: number, length: number) => `${value}`.padStart(length, "0");
+
+const buildCabecMsg = (uf: string) => {
+  const normalized = normalizeUf(uf);
+  const cUF = UF_CODES[normalized] ?? UF_CODES["MG"];
+  const versaoDados = process.env.SEFAZ_VERSAO_DADOS ?? "4.00";
+  return `<nfeCabecMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NfeAutorizacao"><cUF>${padNumber(
+    cUF,
+    2
+  )}</cUF><versaoDados>${versaoDados}</versaoDados></nfeCabecMsg>`;
+};
+
 const normalizePem = (pem: string) => pem.replace(/-----BEGIN CERTIFICATE-----|-----END CERTIFICATE-----|\n/g, "");
+
+const SOAP_ACTION_LOTE = "http://www.portalfiscal.inf.br/nfe/wsdl/NfeAutorizacao/NfeAutorizacaoLote";
+const SOAP_ACTION_RECIBO = "http://www.portalfiscal.inf.br/nfe/wsdl/NfeAutorizacao/NFeRetAutorizacaoLote";
+
+const buildSoapEnvelope = (cabecMsg: string, bodyContent: string) => `
+    <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:nfe="http://www.portalfiscal.inf.br/nfe/wsdl/NfeAutorizacao">
+      <soapenv:Header>
+        ${cabecMsg}
+      </soapenv:Header>
+      <soapenv:Body>
+        ${bodyContent}
+      </soapenv:Body>
+    </soapenv:Envelope>`;
 
 class CertKeyInfo implements FileKeyInfo {
   public file = "";
@@ -204,6 +230,16 @@ const parseSoapResponse = (xml: string) => {
   };
 };
 
+const logSoapResponse = (label: string, endpoint: string, parsed: ReturnType<typeof parseSoapResponse> | null) => {
+  if (!parsed) {
+    console.warn(`[SEFAZ ${label}] ${endpoint} responded without retEnviNFe`);
+    return;
+  }
+  console.info(
+    `[SEFAZ ${label}] ${endpoint} cStat=${parsed.cStat} motivo=${parsed.xMotivo ?? "sem motivo"} nRec=${parsed.nRec ?? "-"} protocolo=${parsed.protocol ?? "-"}`
+  );
+};
+
 export const autorizarNotaSefaz = async (
   xml: string,
   chNFe: string,
@@ -214,13 +250,14 @@ export const autorizarNotaSefaz = async (
   const cert = parsePfx(certificado, senha);
   const signedXml = signXml(xml, cert);
   const payload = signedXml.replace(/^<\?xml.*?\?>\s*/i, "");
-  const envelope = buildSoapEnvelope(payload);
-
+  const cabecMsg = buildCabecMsg(uf);
+  const body = `<nfe:nfeDadosMsg>${payload}</nfe:nfeDadosMsg>`;
   const endpoint = getEndpointFor(uf, "autorizacao");
+  const envelope = buildSoapEnvelope(cabecMsg, body);
   const response = await axios.post(endpoint, envelope, {
     headers: {
       "Content-Type": "text/xml; charset=UTF-8",
-      SOAPAction: "http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4",
+      SOAPAction: SOAP_ACTION_LOTE,
     },
     httpsAgent: new https.Agent({
       cert: cert.certPem,
@@ -235,6 +272,7 @@ export const autorizarNotaSefaz = async (
   if (!parsed) {
     throw new Error("Resposta inválida da SEFAZ");
   }
+  logSoapResponse("Autorizacao", endpoint, parsed);
 
   if (parsed.cStat >= 100 && parsed.cStat < 200) {
     return {
@@ -259,24 +297,19 @@ export const autorizarNotaSefaz = async (
 
 export const consultarRecibo = async (recibo: string, certificado: Buffer, senha: string, uf: string): Promise<AutorizacaoResponse> => {
   const cert = parsePfx(certificado, senha);
-  const envelope = `
-    <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ret="http://www.portalfiscal.inf.br/nfe/wsdl/NFeRetAutorizacao4">
-      <soapenv:Header/>
-      <soapenv:Body>
-        <ret:nfeDadosMsg>
-          <consReciNFe versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe">
-            <tpAmb>${process.env.SEFAZ_AMBIENTE === "producao" ? "1" : "2"}</tpAmb>
-            <nRec>${recibo}</nRec>
-          </consReciNFe>
-        </ret:nfeDadosMsg>
-      </soapenv:Body>
-    </soapenv:Envelope>`;
-
+  const cabecMsg = buildCabecMsg(uf);
+  const payload = `
+    <ret:nfeDadosMsg xmlns:ret="http://www.portalfiscal.inf.br/nfe/wsdl/NFeRetAutorizacao4">
+      <consReciNFe versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe">
+        <tpAmb>${process.env.SEFAZ_AMBIENTE === "producao" ? "1" : "2"}</tpAmb>
+        <nRec>${recibo}</nRec>
+      </consReciNFe>
+    </ret:nfeDadosMsg>`;
   const endpoint = getEndpointFor(uf, "recibo");
-  const response = await axios.post(endpoint, envelope, {
+  const response = await axios.post(endpoint, buildSoapEnvelope(cabecMsg, payload), {
     headers: {
       "Content-Type": "text/xml; charset=UTF-8",
-      SOAPAction: "http://www.portalfiscal.inf.br/nfe/wsdl/NFeRetAutorizacao4",
+      SOAPAction: SOAP_ACTION_RECIBO,
     },
     httpsAgent: new https.Agent({
       cert: cert.certPem,
@@ -291,6 +324,7 @@ export const consultarRecibo = async (recibo: string, certificado: Buffer, senha
   if (!parsed) {
     throw new Error("Resposta inválida da SEFAZ");
   }
+  logSoapResponse("Recibo", endpoint, parsed);
 
   if (parsed.cStat === 100) {
     return {

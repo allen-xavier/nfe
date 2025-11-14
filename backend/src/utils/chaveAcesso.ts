@@ -1,6 +1,6 @@
 import crypto from "crypto";
 
-const UF_CODES: Record<string, number> = {
+export const UF_CODES: Record<string, number> = {
   AC: 12,
   AL: 27,
   AP: 16,

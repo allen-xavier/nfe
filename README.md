@@ -8,6 +8,7 @@ Monorepo containing the backend API, React SPA, database schema, and Docker Swar
 - PostgreSQL schema with `empresas`, `notas_fiscais` e `itens_nota`, and helper scripts in `db/migrations`.
 - Certificate encryption (AES-256), token-based identification, automatic CFOP logic, XML storage, and PDF generation via PDFKit.
 - Run with `npm install` + `npm run dev` inside `backend`.
+- When emitting NF-e the backend now reads the SEFAZ WSDL definitions per-state (UF) and includes the proper `nfeCabecMsg` header, SOAPAction, and XML payload as defined by the SEFAZ operations (`NfeAutorizacaoLote`/`NfeRetAutorizacaoLote`). The console logs include the `cStat`/`motivo` returned by SEFAZ so you can trace authorizations/rejeições in the logs.
 
 ## Frontend (`frontend`)
 
@@ -22,7 +23,7 @@ Monorepo containing the backend API, React SPA, database schema, and Docker Swar
 ## Getting started
 
 1. Provision PostgreSQL using the migration `backend/db/migrations/001-schema.sql`.
-2. Configure `.env` for the backend (see `.env.example`), run `npm install` and `npm run dev` (or `npm run build` + `npm start` inside the container). The `NFE_MODELO`, `NFE_FORMA_EMISSAO`, and `SEFAZ_AMBIENTE` vars control how the access key is generated and which SEFAZ endpoint is used (homologation or production). Each company contributes its own `UF`/`CNPJ` and certificate when signing the XML; the system now selects the state-specific authorization and receipt URLs automatically.
+2. Configure `.env` for the backend (see `.env.example`), run `npm install` and `npm run dev` (or `npm run build` + `npm start` inside the container). The `NFE_MODELO`, `NFE_FORMA_EMISSAO`, `SEFAZ_AMBIENTE`, and `SEFAZ_VERSAO_DADOS` vars control how the access key is generated, which state-specific SEFAZ endpoints to call (e.g., MG homologation uses `hnfe.fazenda.mg.gov.br`, production uses `nfe.fazenda.mg.gov.br`), and which WSDL version is declared in the header. Each company contributes its own `UF`/`CNPJ` and certificate when signing the XML; the system now selects the per-state authorization and receipt URLs automatically while logging the `cStat`/`motivo` from SEFAZ in the console.
 3. Start the frontend locally with `npm run dev` (or `npm run build` inside `frontend` + serve via Docker) and point it at the running API, e.g. `VITE_API_URL=https://api.allentiomolu.com.br npm run dev`.
 4. Use the React form or the REST endpoints to register a company, obtain the token, and emit NF-e (PDF only, XML saved internally).
 

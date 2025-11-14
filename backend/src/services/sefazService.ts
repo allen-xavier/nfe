@@ -2,7 +2,7 @@ import https from "https";
 import axios from "axios";
 import { XMLParser } from "fast-xml-parser";
 import { DOMParser } from "xmldom";
-import { SignedXml } from "xml-crypto";
+import { SignedXml, FileKeyInfo } from "xml-crypto";
 import { parsePfx, Certificado } from "../utils/certificado";
 
 const HOMOLOG_ENDPOINT = "https://hnfews.sefazvirtual.fazenda.gov.br/ws/NFeAutorizacao4";
@@ -36,6 +36,17 @@ const getReciboEndpoint = () => {
 
 const normalizePem = (pem: string) => pem.replace(/-----BEGIN CERTIFICATE-----|-----END CERTIFICATE-----|\n/g, "");
 
+class CertKeyInfo implements FileKeyInfo {
+  public file = "";
+  constructor(private certPem: string, private keyPem: string) {}
+  getKeyInfo(/* key: any */) {
+    return `<X509Data><X509Certificate>${normalizePem(this.certPem)}</X509Certificate></X509Data>`;
+  }
+  getKey() {
+    return this.keyPem;
+  }
+}
+
 const buildSoapEnvelope = (signedXml: string) => {
   return `
     <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:nfe="http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4">
@@ -53,9 +64,7 @@ const signXml = (xml: string, cert: Certificado): string => {
   const signed = new SignedXml();
   signed.addReference("//*[local-name()='infNFe']", ["http://www.w3.org/2000/09/xmldsig#enveloped-signature"], "http://www.w3.org/2001/04/xmlenc#sha256");
   signed.signingKey = cert.keyPem;
-  signed.keyInfoProvider = {
-    getKeyInfo: () => `<X509Data><X509Certificate>${normalizePem(cert.certPem)}</X509Certificate></X509Data>`,
-  };
+  signed.keyInfoProvider = new CertKeyInfo(cert.certPem, cert.keyPem);
   signed.computeSignature(xml, {
     location: { reference: "//*[local-name()='infNFe']", action: "append" },
   });

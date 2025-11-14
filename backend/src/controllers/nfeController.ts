@@ -26,6 +26,7 @@ export const emitirNotaController = async (req: Request, res: Response) => {
         uf: empresa.uf,
         numero_atual_nfe: empresa.numero_atual_nfe,
         serie_nfe: empresa.serie_nfe,
+        cnpj: empresa.cnpj,
       },
       payload
     );

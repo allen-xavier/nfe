@@ -22,7 +22,7 @@ Monorepo containing the backend API, React SPA, database schema, and Docker Swar
 ## Getting started
 
 1. Provision PostgreSQL using the migration `backend/db/migrations/001-schema.sql`.
-2. Configure `.env` for the backend (see `.env.example`), run `npm install` and `npm run dev` (or `npm run build` + `npm start` inside the container).
+2. Configure `.env` for the backend (see `.env.example`), run `npm install` and `npm run dev` (or `npm run build` + `npm start` inside the container). As configurações `NFE_MODELO` e `NFE_FORMA_EMISSAO` agora controlam a forma como a chave de acesso é gerada, e cada empresa usa seu próprio `UF`/`CNPJ` para formar a sequência oficial.
 3. Start the frontend locally with `npm run dev` (or `npm run build` inside `frontend` + serve via Docker) and point it at the running API, e.g. `VITE_API_URL=https://api.allentiomolu.com.br npm run dev`.
 4. Use the React form or the REST endpoints to register a company, obtain the token, and emit NF-e (PDF only, XML saved internally).
 

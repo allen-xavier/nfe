@@ -5,6 +5,7 @@ import { generateDanfe } from "./pdfService";
 import { resolveCfop } from "../utils/cfop";
 import { incrementNumeroNota } from "./empresaService";
 import { create } from "xmlbuilder2";
+import { gerarChaveAcesso } from "../utils/chaveAcesso";
 
 const storageXml = path.resolve(__dirname, "../../storage/xml");
 const storagePdf = path.resolve(__dirname, "../../storage/pdf");
@@ -28,16 +29,15 @@ export interface EmitirNotaDTO {
   };
 }
 
-const montarChaveAcesso = (cnpj: string, numero: number, serie: number): string => {
-  const data = new Date();
-  const cnpjPadded = cnpj.padStart(14, "0");
-  const anoMes = `${data.getFullYear().toString().slice(-2)}${("0" + (data.getMonth() + 1)).slice(-2)}`;
-  const numeroPadded = numero.toString().padStart(9, "0");
-  return `${anoMes}${cnpjPadded}${serie.toString().padStart(3, "0")}55${numeroPadded}12345678`; // Simplificado
-};
-
 export const emitirNota = async (
-  empresa: { id: number; razao_social: string; uf: string; numero_atual_nfe: number; serie_nfe: number },
+  empresa: {
+    id: number;
+    razao_social: string;
+    uf: string;
+    numero_atual_nfe: number;
+    serie_nfe: number;
+    cnpj: string;
+  },
   dto: EmitirNotaDTO
 ) => {
   const nextNumero = await incrementNumeroNota(empresa.id);
@@ -50,7 +50,13 @@ export const emitirNota = async (
     };
   });
   const total = itensComCfop.reduce((sum, item) => sum + item.total_item, 0);
-  const chave_acesso = montarChaveAcesso("00000000000000", nextNumero, empresa.serie_nfe);
+  const chave_acesso = gerarChaveAcesso({
+    cnpj: empresa.cnpj,
+    serie: empresa.serie_nfe,
+    numero: nextNumero,
+    uf: empresa.uf,
+    formaEmissao: process.env.NFE_FORMA_EMISSAO ?? "1",
+  });
 
   const xml = create({ version: "1.0", encoding: "UTF-8" })
     .ele("NFe")

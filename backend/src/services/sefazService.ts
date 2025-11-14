@@ -43,7 +43,7 @@ class CertKeyInfo implements FileKeyInfo {
     return `<X509Data><X509Certificate>${normalizePem(this.certPem)}</X509Certificate></X509Data>`;
   }
   getKey() {
-    return this.keyPem;
+    return Buffer.from(this.keyPem);
   }
 }
 

@@ -167,11 +167,11 @@ const SOAP_ACTION_LOTE = "http://www.portalfiscal.inf.br/nfe/wsdl/NfeAutorizacao
 const SOAP_ACTION_RECIBO = "http://www.portalfiscal.inf.br/nfe/wsdl/NfeAutorizacao/NFeRetAutorizacaoLote";
 
 const buildAutorizacaoBody = (payload: string) => `
-    <nfe:nfeAutorizacaoLote xmlns:nfe="http://www.portalfiscal.inf.br/nfe/wsdl/NfeAutorizacao">
+    <nfe:NFeAutorizacaoLote xmlns:nfe="http://www.portalfiscal.inf.br/nfe/wsdl/NfeAutorizacao">
       <nfe:nfeDadosMsg>
         ${payload}
       </nfe:nfeDadosMsg>
-    </nfe:nfeAutorizacaoLote>`;
+    </nfe:NFeAutorizacaoLote>`;
 
 const buildSoapEnvelope = (cabecMsg: string, bodyContent: string) => `
     <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:nfe="http://www.portalfiscal.inf.br/nfe/wsdl/NfeAutorizacao">
@@ -249,19 +249,27 @@ export const autorizarNotaSefaz = async (
   const body = buildAutorizacaoBody(payload);
   const endpoint = getEndpointFor(uf, "autorizacao");
   const envelope = buildSoapEnvelope(cabecMsg, body);
-  const response = await axios.post(endpoint, envelope, {
-    headers: {
-      "Content-Type": "text/xml; charset=UTF-8",
-      SOAPAction: SOAP_ACTION_LOTE,
-    },
-    httpsAgent: new https.Agent({
-      cert: cert.certPem,
-      key: cert.keyPem,
-      passphrase: senha,
-      rejectUnauthorized: false,
-    }),
-    timeout: 120000,
-  });
+  let response;
+  try {
+    response = await axios.post(endpoint, envelope, {
+      headers: {
+        "Content-Type": "text/xml; charset=UTF-8",
+        SOAPAction: SOAP_ACTION_LOTE,
+      },
+      httpsAgent: new https.Agent({
+        cert: cert.certPem,
+        key: cert.keyPem,
+        passphrase: senha,
+        rejectUnauthorized: false,
+      }),
+      timeout: 120000,
+    });
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      console.error("[SEFAZ] resposta inválida", error.response.data);
+    }
+    throw error;
+  }
 
   const parsed = parseSoapResponse(response.data);
   if (!parsed) {

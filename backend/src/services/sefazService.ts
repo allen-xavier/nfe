@@ -217,7 +217,10 @@ export const autorizarNotaSefaz = async (
 
   const endpoint = getEndpointFor(uf, "autorizacao");
   const response = await axios.post(endpoint, envelope, {
-    headers: { "Content-Type": "text/xml; charset=UTF-8" },
+    headers: {
+      "Content-Type": "text/xml; charset=UTF-8",
+      SOAPAction: "http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4",
+    },
     httpsAgent: new https.Agent({
       cert: cert.certPem,
       key: cert.keyPem,
@@ -270,7 +273,10 @@ export const consultarRecibo = async (recibo: string, certificado: Buffer, senha
 
   const endpoint = getEndpointFor(uf, "recibo");
   const response = await axios.post(endpoint, envelope, {
-    headers: { "Content-Type": "text/xml; charset=UTF-8" },
+    headers: {
+      "Content-Type": "text/xml; charset=UTF-8",
+      SOAPAction: "http://www.portalfiscal.inf.br/nfe/wsdl/NFeRetAutorizacao4",
+    },
     httpsAgent: new https.Agent({
       cert: cert.certPem,
       key: cert.keyPem,

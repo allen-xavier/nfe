@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import fs from "fs/promises";
 import path from "path";
 import { query } from "../db";
@@ -5,11 +6,56 @@ import { generateDanfe } from "./pdfService";
 import { resolveCfop } from "../utils/cfop";
 import { incrementNumeroNota } from "./empresaService";
 import { create } from "xmlbuilder2";
-import { gerarChaveAcesso } from "../utils/chaveAcesso";
+import { gerarChaveAcesso, UF_CODES } from "../utils/chaveAcesso";
+import { resolveMunicipioPorCep } from "../utils/cep";
 import { autorizarNotaSefaz, consultarRecibo, AutorizacaoResponse } from "./sefazService";
 
 const storageXml = path.resolve(__dirname, "../../storage/xml");
 const storagePdf = path.resolve(__dirname, "../../storage/pdf");
+
+const sanitizeDigits = (value?: string) => (value ?? "").replace(/\D/g, "");
+
+const formatMunicipioCode = (value: string) => value.padStart(7, "0");
+
+const formatDateTime = (date: Date) => {
+  const pad = (value: number) => value.toString().padStart(2, "0");
+  const timezoneOffsetMinutes = date.getTimezoneOffset();
+  const offsetSign = timezoneOffsetMinutes <= 0 ? "+" : "-";
+  const absOffset = Math.abs(timezoneOffsetMinutes);
+  const hours = Math.floor(absOffset / 60);
+  const minutes = absOffset % 60;
+  const timezone = `${offsetSign}${pad(hours)}:${pad(minutes)}`;
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
+    date.getHours()
+  )}:${pad(date.getMinutes())}:${pad(date.getSeconds())}${timezone}`;
+};
+
+const normalizeCrtCode = (value?: string) => {
+  if (!value) {
+    return "1";
+  }
+  const digits = value.replace(/\D/g, "");
+  if (["1", "2", "3"].includes(digits)) {
+    return digits;
+  }
+  const lower = value.toLowerCase();
+  if (lower.includes("simples")) {
+    return "1";
+  }
+  if (lower.includes("presumido")) {
+    return "2";
+  }
+  if (lower.includes("real")) {
+    return "3";
+  }
+  return "1";
+};
+
+const padNumber = (value: number | string, length: number) => `${value}`.padStart(length, "0");
+
+const normalizeUf = (uf?: string) => (uf ?? "MG").toUpperCase();
+
+const getTpAmb = () => (process.env.SEFAZ_AMBIENTE === "producao" ? "1" : "2");
 
 export interface EmitirNotaDTO {
   empresa_id?: number;
@@ -18,6 +64,10 @@ export interface EmitirNotaDTO {
     cpf: string;
     endereco: string;
     uf: string;
+    cidade: string;
+    cep: string;
+    numero: string;
+    bairro: string;
   };
   itens: {
     descricao: string;
@@ -34,7 +84,13 @@ export const emitirNota = async (
   empresa: {
     id: number;
     razao_social: string;
+    nome_fantasia: string;
     uf: string;
+    cidade: string;
+    endereco: string;
+    cep: string;
+    ie: string;
+    crt: string;
     numero_atual_nfe: number;
     serie_nfe: number;
     cnpj: string;
@@ -63,6 +119,20 @@ export const emitirNota = async (
     formaEmissao: process.env.NFE_FORMA_EMISSAO ?? "1",
   });
 
+  const emitterMunicipio = await resolveMunicipioPorCep(empresa.cep);
+  const destinatarioMunicipio = await resolveMunicipioPorCep(dto.destinatario.cep);
+  const emitenteUf = normalizeUf(empresa.uf);
+  const destinatarioUf = normalizeUf(dto.destinatario.uf);
+  const tpAmb = getTpAmb();
+  const agora = new Date();
+  const cUF = padNumber(UF_CODES[emitenteUf] ?? UF_CODES["MG"], 2);
+  const cNF = padNumber(crypto.randomInt(0, 100000000), 8);
+  const dhEmi = formatDateTime(agora);
+  const dhSaiEnt = dhEmi;
+  const destinoInterno = emitenteUf === destinatarioUf;
+  const cDV = chave_acesso.slice(-1);
+  const verProc = process.env.APP_VERSION ?? process.env.npm_package_version ?? "1.0.0";
+
   const xmlBuilder = create({ version: "1.0", encoding: "UTF-8" })
     .ele("enviNFe", { versao: "4.00", xmlns: "http://www.portalfiscal.inf.br/nfe" });
   const NFe = xmlBuilder.ele("NFe");
@@ -71,12 +141,58 @@ export const emitirNota = async (
     versao: "4.00",
   });
 
+  const ide = infNFe.ele("ide");
+  ide.ele("cUF").txt(cUF);
+  ide.ele("cNF").txt(cNF);
+  ide.ele("natOp").txt("VENDA DE MERCADORIA");
+  ide.ele("mod").txt(process.env.NFE_MODELO ?? "55");
+  ide.ele("serie").txt(empresa.serie_nfe.toString());
+  ide.ele("nNF").txt(nextNumero.toString());
+  ide.ele("dhEmi").txt(dhEmi);
+  ide.ele("dhSaiEnt").txt(dhSaiEnt);
+  ide.ele("tpNF").txt("1");
+  ide.ele("idDest").txt(destinoInterno ? "1" : "2");
+  ide.ele("cMunFG").txt(formatMunicipioCode(emitterMunicipio));
+  ide.ele("tpImp").txt("1");
+  ide.ele("tpEmis").txt(process.env.NFE_FORMA_EMISSAO ?? "1");
+  ide.ele("cDV").txt(cDV);
+  ide.ele("tpAmb").txt(tpAmb);
+  ide.ele("finNFe").txt("1");
+  ide.ele("indFinal").txt("0");
+  ide.ele("indPres").txt("2");
+  ide.ele("procEmi").txt("0");
+  ide.ele("verProc").txt(verProc);
+
+  const emit = infNFe.ele("emit");
+  emit.ele("CNPJ").txt(sanitizeDigits(empresa.cnpj));
+  emit.ele("xNome").txt(empresa.razao_social);
+  emit.ele("xFant").txt(empresa.nome_fantasia ?? empresa.razao_social);
+  emit.ele("IE").txt(empresa.ie);
+  emit.ele("CRT").txt(normalizeCrtCode(empresa.crt));
+  const enderEmit = emit.ele("enderEmit");
+  enderEmit.ele("xLgr").txt(empresa.endereco);
+  enderEmit.ele("nro").txt("S/N");
+  enderEmit.ele("xBairro").txt("Centro");
+  enderEmit.ele("xMun").txt(empresa.cidade);
+  enderEmit.ele("UF").txt(emitenteUf);
+  enderEmit.ele("CEP").txt(sanitizeDigits(empresa.cep));
+  enderEmit.ele("cMun").txt(formatMunicipioCode(emitterMunicipio));
+  enderEmit.ele("cPais").txt("1058");
+  enderEmit.ele("xPais").txt("BRASIL");
+
   const dest = infNFe.ele("dest");
   dest.ele("xNome").txt(dto.destinatario.nome);
-  dest.ele("CPF").txt(dto.destinatario.cpf);
+  dest.ele("CPF").txt(sanitizeDigits(dto.destinatario.cpf));
   const enderDest = dest.ele("enderDest");
-  enderDest.ele("UF").txt(dto.destinatario.uf);
   enderDest.ele("xLgr").txt(dto.destinatario.endereco);
+  enderDest.ele("nro").txt(dto.destinatario.numero?.trim() || "S/N");
+  enderDest.ele("xBairro").txt(dto.destinatario.bairro?.trim() || "Centro");
+  enderDest.ele("xMun").txt(dto.destinatario.cidade);
+  enderDest.ele("UF").txt(destinatarioUf);
+  enderDest.ele("CEP").txt(sanitizeDigits(dto.destinatario.cep));
+  enderDest.ele("cMun").txt(formatMunicipioCode(destinatarioMunicipio));
+  enderDest.ele("cPais").txt("1058");
+  enderDest.ele("xPais").txt("BRASIL");
 
   itensComCfop.forEach((item, index) => {
     const det = infNFe.ele("det", { nItem: (index + 1).toString().padStart(2, "0") });
@@ -103,6 +219,9 @@ export const emitirNota = async (
 
   const totalTag = infNFe.ele("total");
   const icmsTot = totalTag.ele("ICMSTot");
+  icmsTot.ele("vBC").txt("0.00");
+  icmsTot.ele("vICMS").txt("0.00");
+  icmsTot.ele("vProd").txt(total.toFixed(2));
   icmsTot.ele("vNF").txt(total.toFixed(2));
 
   const xml = xmlBuilder.end({ prettyPrint: true });

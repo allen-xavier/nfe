@@ -16,6 +16,10 @@ const NotaForm: React.FC = () => {
     cpf: "",
     endereco: "",
     uf: "MG",
+    cidade: "",
+    cep: "",
+    numero: "",
+    bairro: "",
   });
   const [itens, setItens] = useState<Item[]>([
     { descricao: "", ncm: "", quantidade: 1, valor_unitario: 0 },
@@ -88,6 +92,10 @@ const NotaForm: React.FC = () => {
             </option>
           ))}
         </select>
+        <input placeholder="Cidade" value={destinatario.cidade} onChange={handleDestChange("cidade")} required />
+        <input placeholder="CEP" value={destinatario.cep} onChange={handleDestChange("cep")} required />
+        <input placeholder="Número" value={destinatario.numero} onChange={handleDestChange("numero")} />
+        <input placeholder="Bairro" value={destinatario.bairro} onChange={handleDestChange("bairro")} />
       </div>
       <div>
         <h3>Itens</h3>

@@ -147,7 +147,6 @@ const getEndpointFor = (uf: string, key: "autorizacao" | "recibo") => {
   const entry = SEFAZ_ENDPOINTS[normalized] ?? SEFAZ_ENDPOINTS["SVAN"];
   return entry[ambiente][key];
 };
-};
 
 const normalizePem = (pem: string) => pem.replace(/-----BEGIN CERTIFICATE-----|-----END CERTIFICATE-----|\n/g, "");
 

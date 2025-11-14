@@ -95,10 +95,10 @@ export const emitirNota = async (
   await fs.writeFile(path.join(storageXml, `${chave_acesso}.xml`), xml, { encoding: "utf8" });
 
   const certificadoBuffer = Buffer.isBuffer(certificado.pfx) ? certificado.pfx : Buffer.from(certificado.pfx);
-  const footer = await autorizarNotaSefaz(xml, chave_acesso, certificadoBuffer, certificado.senha);
+  const footer = await autorizarNotaSefaz(xml, chave_acesso, certificadoBuffer, certificado.senha, empresa.uf);
   let finalStatus: AutorizacaoResponse = footer;
   if (footer.status === "PENDENTE" && footer.recibo) {
-    finalStatus = await consultarRecibo(footer.recibo, certificadoBuffer, certificado.senha);
+    finalStatus = await consultarRecibo(footer.recibo, certificadoBuffer, certificado.senha, empresa.uf);
   }
   const statusDb = finalStatus.status === "AUTORIZADA" ? "AUTORIZADA" : "REJEITADA";
   const protocolo = finalStatus.protocolo ?? footer.protocolo;

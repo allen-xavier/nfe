@@ -5,10 +5,123 @@ import { DOMParser } from "xmldom";
 import { SignedXml, FileKeyInfo } from "xml-crypto";
 import { parsePfx, Certificado } from "../utils/certificado";
 
-const HOMOLOG_ENDPOINT = "https://hnfews.sefazvirtual.fazenda.gov.br/ws/NFeAutorizacao4";
-const PROD_ENDPOINT = "https://nfews.sefazvirtual.fazenda.gov.br/ws/NFeAutorizacao4";
-const HOMOLOG_RET_ENDPOINT = "https://hnfews.sefazvirtual.fazenda.gov.br/ws/NFeRetAutorizacao4";
-const PROD_RET_ENDPOINT = "https://nfews.sefazvirtual.fazenda.gov.br/ws/NFeRetAutorizacao4";
+type SefazServiceEndpoints = {
+  autorizacao: string;
+  recibo: string;
+};
+
+const SEFAZ_ENDPOINTS: Record<string, { homologacao: SefazServiceEndpoints; producao: SefazServiceEndpoints }> = {
+  MG: {
+    homologacao: {
+      autorizacao: "https://nfe.fazenda.mg.gov.br/nfe2/services/NFeAutorizacao4",
+      recibo: "https://nfe.fazenda.mg.gov.br/nfe2/services/NFeRetAutorizacao4",
+    },
+    producao: {
+      autorizacao: "https://nfe.fazenda.mg.gov.br/nfe2/services/NFeAutorizacao4",
+      recibo: "https://nfe.fazenda.mg.gov.br/nfe2/services/NFeRetAutorizacao4",
+    },
+  },
+  SP: {
+    homologacao: {
+      autorizacao: "https://nfe.fazenda.sp.gov.br/ws/nfeautorizacao4.asmx",
+      recibo: "https://nfe.fazenda.sp.gov.br/ws/nferetautorizacao4.asmx",
+    },
+    producao: {
+      autorizacao: "https://nfe.fazenda.sp.gov.br/ws/nfeautorizacao4.asmx",
+      recibo: "https://nfe.fazenda.sp.gov.br/ws/nferetautorizacao4.asmx",
+    },
+  },
+  RS: {
+    homologacao: {
+      autorizacao: "https://nfe.sefazrs.rs.gov.br/ws/NfeAutorizacao/NFeAutorizacao4.asmx",
+      recibo: "https://nfe.sefazrs.rs.gov.br/ws/NfeRetAutorizacao/NFeRetAutorizacao4.asmx",
+    },
+    producao: {
+      autorizacao: "https://nfe.sefazrs.rs.gov.br/ws/NfeAutorizacao/NFeAutorizacao4.asmx",
+      recibo: "https://nfe.sefazrs.rs.gov.br/ws/NfeRetAutorizacao/NFeRetAutorizacao4.asmx",
+    },
+  },
+  BA: {
+    homologacao: {
+      autorizacao: "https://nfe.sefaz.ba.gov.br/webservices/NFeAutorizacao4/NFeAutorizacao4.asmx",
+      recibo: "https://nfe.sefaz.ba.gov.br/webservices/NFeRetAutorizacao4/NFeRetAutorizacao4.asmx",
+    },
+    producao: {
+      autorizacao: "https://nfe.sefaz.ba.gov.br/webservices/NFeAutorizacao4/NFeAutorizacao4.asmx",
+      recibo: "https://nfe.sefaz.ba.gov.br/webservices/NFeRetAutorizacao4/NFeRetAutorizacao4.asmx",
+    },
+  },
+  PR: {
+    homologacao: {
+      autorizacao: "https://nfe.sefa.pr.gov.br/nfe/NFeAutorizacao4?wsdl",
+      recibo: "https://nfe.sefa.pr.gov.br/nfe/NFeRetAutorizacao4?wsdl",
+    },
+    producao: {
+      autorizacao: "https://nfe.sefa.pr.gov.br/nfe/NFeAutorizacao4?wsdl",
+      recibo: "https://nfe.sefa.pr.gov.br/nfe/NFeRetAutorizacao4?wsdl",
+    },
+  },
+  PE: {
+    homologacao: {
+      autorizacao: "https://nfe.sefaz.pe.gov.br/nfe-service/services/NFeAutorizacao4",
+      recibo: "https://nfe.sefaz.pe.gov.br/nfe-service/services/NFeRetAutorizacao4",
+    },
+    producao: {
+      autorizacao: "https://nfe.sefaz.pe.gov.br/nfe-service/services/NFeAutorizacao4",
+      recibo: "https://nfe.sefaz.pe.gov.br/nfe-service/services/NFeRetAutorizacao4",
+    },
+  },
+  GO: {
+    homologacao: {
+      autorizacao: "https://nfe.sefaz.go.gov.br/nfe/services/NFeAutorizacao4?wsdl",
+      recibo: "https://nfe.sefaz.go.gov.br/nfe/services/NFeRetAutorizacao4?wsdl",
+    },
+    producao: {
+      autorizacao: "https://nfe.sefaz.go.gov.br/nfe/services/NFeAutorizacao4?wsdl",
+      recibo: "https://nfe.sefaz.go.gov.br/nfe/services/NFeRetAutorizacao4?wsdl",
+    },
+  },
+  MS: {
+    homologacao: {
+      autorizacao: "https://nfe.sefaz.ms.gov.br/ws/NFeAutorizacao4",
+      recibo: "https://nfe.sefaz.ms.gov.br/ws/NFeRetAutorizacao4",
+    },
+    producao: {
+      autorizacao: "https://nfe.sefaz.ms.gov.br/ws/NFeAutorizacao4",
+      recibo: "https://nfe.sefaz.ms.gov.br/ws/NFeRetAutorizacao4",
+    },
+  },
+  MT: {
+    homologacao: {
+      autorizacao: "https://nfe.sefaz.mt.gov.br/nfews/v2/services/NfeAutorizacao4?wsdl",
+      recibo: "https://nfe.sefaz.mt.gov.br/nfews/v2/services/NfeRetAutorizacao4?wsdl",
+    },
+    producao: {
+      autorizacao: "https://nfe.sefaz.mt.gov.br/nfews/v2/services/NfeAutorizacao4?wsdl",
+      recibo: "https://nfe.sefaz.mt.gov.br/nfews/v2/services/NfeRetAutorizacao4?wsdl",
+    },
+  },
+  AM: {
+    homologacao: {
+      autorizacao: "https://nfe.sefaz.am.gov.br/services2/services/NfeAutorizacao4",
+      recibo: "https://nfe.sefaz.am.gov.br/services2/services/NfeRetAutorizacao4",
+    },
+    producao: {
+      autorizacao: "https://nfe.sefaz.am.gov.br/services2/services/NfeAutorizacao4",
+      recibo: "https://nfe.sefaz.am.gov.br/services2/services/NfeRetAutorizacao4",
+    },
+  },
+  SVAN: {
+    homologacao: {
+      autorizacao: "https://www.sefazvirtual.fazenda.gov.br/NFeAutorizacao4/NFeAutorizacao4.asmx",
+      recibo: "https://www.sefazvirtual.fazenda.gov.br/NFeRetAutorizacao4/NFeRetAutorizacao4.asmx",
+    },
+    producao: {
+      autorizacao: "https://www.sefazvirtual.fazenda.gov.br/NFeAutorizacao4/NFeAutorizacao4.asmx",
+      recibo: "https://www.sefazvirtual.fazenda.gov.br/NFeRetAutorizacao4/NFeRetAutorizacao4.asmx",
+    },
+  },
+};
 
 const parser = new XMLParser({
   ignoreAttributes: false,
@@ -24,14 +137,16 @@ export interface AutorizacaoResponse {
   motivo?: string;
 }
 
-const getEndpoint = () => {
-  const env = process.env.SEFAZ_AMBIENTE ?? "homologacao";
-  return env === "producao" ? PROD_ENDPOINT : HOMOLOG_ENDPOINT;
-};
+const getAmbiente = () => (process.env.SEFAZ_AMBIENTE ?? "homologacao") === "producao" ? "producao" : "homologacao";
 
-const getReciboEndpoint = () => {
-  const env = process.env.SEFAZ_AMBIENTE ?? "homologacao";
-  return env === "producao" ? PROD_RET_ENDPOINT : HOMOLOG_RET_ENDPOINT;
+const normalizeUf = (uf?: string) => (uf ?? "SVAN").toUpperCase();
+
+const getEndpointFor = (uf: string, key: "autorizacao" | "recibo") => {
+  const ambiente = getAmbiente();
+  const normalized = normalizeUf(uf);
+  const entry = SEFAZ_ENDPOINTS[normalized] ?? SEFAZ_ENDPOINTS["SVAN"];
+  return entry[ambiente][key];
+};
 };
 
 const normalizePem = (pem: string) => pem.replace(/-----BEGIN CERTIFICATE-----|-----END CERTIFICATE-----|\n/g, "");
@@ -90,12 +205,19 @@ const parseSoapResponse = (xml: string) => {
   };
 };
 
-export const autorizarNotaSefaz = async (xml: string, chNFe: string, certificado: Buffer, senha: string): Promise<AutorizacaoResponse> => {
+export const autorizarNotaSefaz = async (
+  xml: string,
+  chNFe: string,
+  certificado: Buffer,
+  senha: string,
+  uf: string
+): Promise<AutorizacaoResponse> => {
   const cert = parsePfx(certificado, senha);
   const signedXml = signXml(xml, cert);
   const envelope = buildSoapEnvelope(signedXml);
 
-  const response = await axios.post(getEndpoint(), envelope, {
+  const endpoint = getEndpointFor(uf, "autorizacao");
+  const response = await axios.post(endpoint, envelope, {
     headers: { "Content-Type": "text/xml; charset=UTF-8" },
     httpsAgent: new https.Agent({
       cert: cert.certPem,
@@ -132,7 +254,7 @@ export const autorizarNotaSefaz = async (xml: string, chNFe: string, certificado
   };
 };
 
-export const consultarRecibo = async (recibo: string, certificado: Buffer, senha: string): Promise<AutorizacaoResponse> => {
+export const consultarRecibo = async (recibo: string, certificado: Buffer, senha: string, uf: string): Promise<AutorizacaoResponse> => {
   const cert = parsePfx(certificado, senha);
   const envelope = `
     <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ret="http://www.portalfiscal.inf.br/nfe/wsdl/NFeRetAutorizacao4">
@@ -147,7 +269,8 @@ export const consultarRecibo = async (recibo: string, certificado: Buffer, senha
       </soapenv:Body>
     </soapenv:Envelope>`;
 
-  const response = await axios.post(getReciboEndpoint(), envelope, {
+  const endpoint = getEndpointFor(uf, "recibo");
+  const response = await axios.post(endpoint, envelope, {
     headers: { "Content-Type": "text/xml; charset=UTF-8" },
     httpsAgent: new https.Agent({
       cert: cert.certPem,

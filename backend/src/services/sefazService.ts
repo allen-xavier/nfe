@@ -187,18 +187,6 @@ class CertKeyInfo implements FileKeyInfo {
   }
 }
 
-const buildSoapEnvelope = (signedXml: string) => {
-  return `
-    <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:nfe="http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4">
-      <soapenv:Header/>
-      <soapenv:Body>
-        <nfe:nfeDadosMsg>
-          ${signedXml}
-        </nfe:nfeDadosMsg>
-      </soapenv:Body>
-    </soapenv:Envelope>`;
-};
-
 const signXml = (xml: string, cert: Certificado): string => {
   const doc = new DOMParser().parseFromString(xml);
   const signed = new SignedXml();

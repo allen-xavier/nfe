@@ -21,6 +21,8 @@ CREATE TABLE notas_fiscais (
   id SERIAL PRIMARY KEY,
   empresa_id INTEGER REFERENCES empresas(id),
   chave_acesso VARCHAR(44) NOT NULL UNIQUE,
+  protocolo VARCHAR(50),
+  recibo VARCHAR(20),
   numero INTEGER NOT NULL,
   serie INTEGER NOT NULL,
   destinatario_nome TEXT NOT NULL,

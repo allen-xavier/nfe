@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { EmitirNotaDTO, emitirNota, buscarPDF, findNotaFiscal } from "../services/nfeService";
 import { findEmpresaByToken } from "../services/empresaService";
+import { decrypt } from "../utils/security";
 
 const extractToken = (header?: string) => header?.split(" ")[1];
 
@@ -19,6 +20,8 @@ export const emitirNotaController = async (req: Request, res: Response) => {
     const payload: EmitirNotaDTO = req.body;
     payload.empresa_id = empresa.id;
 
+    const certificadoSenha = decrypt(empresa.certificado_senha);
+    const certificadoPfx = empresa.certificado_pfx;
     const result = await emitirNota(
       {
         id: empresa.id,
@@ -27,6 +30,10 @@ export const emitirNotaController = async (req: Request, res: Response) => {
         numero_atual_nfe: empresa.numero_atual_nfe,
         serie_nfe: empresa.serie_nfe,
         cnpj: empresa.cnpj,
+      },
+      {
+        pfx: certificadoPfx,
+        senha: certificadoSenha,
       },
       payload
     );

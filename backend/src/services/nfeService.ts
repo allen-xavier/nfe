@@ -6,6 +6,7 @@ import { resolveCfop } from "../utils/cfop";
 import { incrementNumeroNota } from "./empresaService";
 import { create } from "xmlbuilder2";
 import { gerarChaveAcesso } from "../utils/chaveAcesso";
+import { autorizarNotaSefaz, consultarRecibo, AutorizacaoResponse } from "./sefazService";
 
 const storageXml = path.resolve(__dirname, "../../storage/xml");
 const storagePdf = path.resolve(__dirname, "../../storage/pdf");
@@ -37,6 +38,10 @@ export const emitirNota = async (
     numero_atual_nfe: number;
     serie_nfe: number;
     cnpj: string;
+  },
+  certificado: {
+    pfx: Buffer | string;
+    senha: string;
   },
   dto: EmitirNotaDTO
 ) => {
@@ -89,15 +94,29 @@ export const emitirNota = async (
 
   await fs.writeFile(path.join(storageXml, `${chave_acesso}.xml`), xml, { encoding: "utf8" });
 
+  const certificadoBuffer = Buffer.isBuffer(certificado.pfx) ? certificado.pfx : Buffer.from(certificado.pfx);
+  const footer = await autorizarNotaSefaz(xml, chave_acesso, certificadoBuffer, certificado.senha);
+  let finalStatus: AutorizacaoResponse = footer;
+  if (footer.status === "PENDENTE" && footer.recibo) {
+    finalStatus = await consultarRecibo(footer.recibo, certificadoBuffer, certificado.senha);
+  }
+  const statusDb = finalStatus.status === "AUTORIZADA" ? "AUTORIZADA" : "REJEITADA";
+  const protocolo = finalStatus.protocolo ?? footer.protocolo;
+  const motivo = finalStatus.motivo ?? footer.motivo;
+  const recibo = finalStatus.recibo ?? footer.recibo;
+
   const notaResult = await query(
     `INSERT INTO notas_fiscais (
-      empresa_id, chave_acesso, numero, serie, destinatario_nome, destinatario_cpf,
-      destinatario_endereco, destinatario_uf, total, xml_autorizado, status, criado_em
-    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NOW())
+      empresa_id, chave_acesso, protocolo, recibo, numero, serie, destinatario_nome, destinatario_cpf,
+      destinatario_endereco, destinatario_uf, total, xml_autorizado, status, codigo_rejeicao,
+      mensagem_rejeicao, criado_em
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,NOW())
     RETURNING *`,
     [
       empresa.id,
       chave_acesso,
+      protocolo,
+      recibo,
       nextNumero,
       empresa.serie_nfe,
       dto.destinatario.nome,
@@ -106,7 +125,9 @@ export const emitirNota = async (
       dto.destinatario.uf,
       total,
       Buffer.from(xml),
-      "AUTORIZADA",
+      statusDb,
+      statusDb === "REJEITADA" ? finalStatus.motivo : null,
+      statusDb === "REJEITADA" ? finalStatus.motivo : null,
     ]
   );
 

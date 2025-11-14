@@ -12,7 +12,7 @@ Monorepo containing the backend API, React SPA, database schema, and Docker Swar
 ## Frontend (`frontend`)
 
 - Vite + React SPA with company registration (PFX upload + token generation) and manual NF-e issuance forms.
-- Calls the API host defined by `VITE_API_URL` (defaults to `http://localhost:3000`) so you can point it to `https://api.allentiomolu.com.br` in production.
+- Calls the API host defined by `VITE_API_URL` (defaults to `https://api.allentiomolu.com.br` when you build for production via `.env.production`, or `http://localhost:3000` while you develop).
 - Run with `npm install` + `npm run dev` inside `frontend`.
 
 ## Infrastructure

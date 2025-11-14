@@ -1,3 +1,4 @@
+import axios from "axios";
 import React, { useState } from "react";
 import api from "../lib/api";
 
@@ -58,8 +59,15 @@ const NotaForm: React.FC = () => {
       const url = URL.createObjectURL(new Blob([response.data], { type: "application/pdf" }));
       setPdfUrl(url);
       setMessage("NF-e autorizada. PDF pronto para download.");
-    } catch (error) {
-      setMessage("Erro ao emitir nota.");
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        const message = error.response?.data?.error ?? error.response?.data?.detail ?? error.message;
+        setMessage(message);
+      } else if (error instanceof Error) {
+        setMessage(error.message);
+      } else {
+        setMessage("Erro ao emitir nota.");
+      }
     }
   };
 

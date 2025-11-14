@@ -35,7 +35,11 @@ export const emitirNotaController = async (req: Request, res: Response) => {
       .contentType("application/pdf")
       .sendFile(result.pdf_path, { headers: { "X-Chave-Acesso": result.chave_acesso } });
   } catch (error) {
-    return res.status(500).json({ error: "Erro ao emitir nota fiscal." });
+    console.error("Erro ao emitir nota", error);
+    return res.status(500).json({
+      error: "Erro ao emitir nota fiscal.",
+      detail: error instanceof Error ? error.message : undefined,
+    });
   }
 };
 

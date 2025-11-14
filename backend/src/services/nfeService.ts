@@ -63,34 +63,44 @@ export const emitirNota = async (
     formaEmissao: process.env.NFE_FORMA_EMISSAO ?? "1",
   });
 
-  const xml = create({ version: "1.0", encoding: "UTF-8" })
-    .ele("NFe")
-    .ele("infNFe", {
-      Id: `NFe${chave_acesso}`,
-      versao: "4.00",
-    })
-    .ele("dest")
-    .ele("xNome")
-    .txt(dto.destinatario.nome)
-    .up()
-    .ele("CPF")
-    .txt(dto.destinatario.cpf)
-    .up()
-    .ele("enderDest")
-    .ele("UF")
-    .txt(dto.destinatario.uf)
-    .up()
-    .ele("xLgr")
-    .txt(dto.destinatario.endereco)
-    .up()
-    .up()
-    .up()
-    .up()
-    .ele("det")
-    .txt("Itens adicionados")
-    .up()
-    .up()
-    .end({ prettyPrint: true });
+  const xmlBuilder = create({ version: "1.0", encoding: "UTF-8" })
+    .ele("NFe", { xmlns: "http://www.portalfiscal.inf.br/nfe" });
+  const infNFe = xmlBuilder.ele("infNFe", {
+    Id: `NFe${chave_acesso}`,
+    versao: "4.00",
+  });
+
+  const dest = infNFe.ele("dest");
+  dest.ele("xNome").txt(dto.destinatario.nome);
+  dest.ele("CPF").txt(dto.destinatario.cpf);
+  const enderDest = dest.ele("enderDest");
+  enderDest.ele("UF").txt(dto.destinatario.uf);
+  enderDest.ele("xLgr").txt(dto.destinatario.endereco);
+
+  itensComCfop.forEach((item, index) => {
+    const det = infNFe.ele("det", { nItem: (index + 1).toString().padStart(2, "0") });
+    const prod = det.ele("prod");
+    prod.ele("xProd").txt(item.descricao);
+    prod.ele("NCM").txt(item.ncm);
+    prod.ele("CFOP").txt(item.cfop);
+    prod.ele("uCom").txt("un");
+    prod.ele("qCom").txt(item.quantidade.toString());
+    prod.ele("vUnCom").txt(item.valor_unitario.toFixed(2));
+    prod.ele("vProd").txt(item.total_item.toFixed(2));
+    det.ele("imposto")
+      .ele("ICMS")
+      .ele("ICMS00")
+      .ele("orig")
+      .txt("0")
+      .up()
+      .ele("CST")
+      .txt("00")
+      .up()
+      .up()
+      .up();
+  });
+
+  const xml = xmlBuilder.end({ prettyPrint: true });
 
   await fs.writeFile(path.join(storageXml, `${chave_acesso}.xml`), xml, { encoding: "utf8" });
 

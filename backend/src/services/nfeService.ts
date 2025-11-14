@@ -133,7 +133,8 @@ export const emitirNota = async (
   const cDV = chave_acesso.slice(-1);
   const verProc = process.env.APP_VERSION ?? process.env.npm_package_version ?? "1.0.0";
 
-  const idLote = padNumber(crypto.randomInt(1, 1_000_000_000_000_000), 15);
+  const MAX_ID_LOTE = 281_474_976_710_655;
+  const idLote = padNumber(crypto.randomInt(1, MAX_ID_LOTE + 1), 15);
   const xmlBuilder = create({ version: "1.0", encoding: "UTF-8" })
     .ele("enviNFe", { versao: "4.00", xmlns: "http://www.portalfiscal.inf.br/nfe" });
   xmlBuilder.ele("idLote").txt(idLote);

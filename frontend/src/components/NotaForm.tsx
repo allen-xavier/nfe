@@ -1,5 +1,5 @@
-import axios from "axios";
 import React, { useState } from "react";
+import api from "../lib/api";
 
 type Item = {
   descricao: string;
@@ -41,8 +41,8 @@ const NotaForm: React.FC = () => {
     }
 
     try {
-      const response = await axios.post(
-        "/api/nfe/emitir",
+      const response = await api.post(
+        "/nfe/emitir",
         {
           destinatario,
           itens,

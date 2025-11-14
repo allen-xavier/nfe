@@ -1,4 +1,4 @@
-import axios from "axios";
+import api from "../lib/api";
 import React, { useState } from "react";
 
 const readFileAsBase64 = (file: File) =>
@@ -59,7 +59,7 @@ const EmpresaForm: React.FC = () => {
         ...form,
         certificado_pfx: certificadoBase64,
       };
-      const response = await axios.post("/api/empresa", payload);
+      const response = await api.post("/empresa", payload);
       setToken(response.data.token);
       setStatus("Empresa criada com sucesso.");
     } catch (error) {
